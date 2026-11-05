@@ -1,5 +1,5 @@
 const baseData=window.TRIP_DATA||[], hotels=window.HOTELS||[], flights=window.FLIGHTS||[], loungeData=window.LOUNGE_DATA||[], rental=window.RENTAL_DATA||{}, ref=window.REFERENCE_DATA||{cards:[],networkPromos:[],guides:[]};
-const APP_META={version:'2.11.1',label:'完整導讀・精準刷卡・住宿圖片',released:'2026-11-05'};
+const APP_META={version:'2.11.2',label:'官方路況連結・柴犬貓咪付款人',released:'2026-11-05'};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)], pad=n=>String(n).padStart(2,'0');
 const esc=(s='')=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(16).slice(2);
@@ -99,7 +99,10 @@ function rowMapActions(r){
   const guideHref=inferredGuide(r);
   const guide=guideHref?`<a href="${esc(guideHref)}" onclick="rememberGuideReturn()">📖 ${esc(r['Guide Label']||'完整導讀')}</a>`:'';
   const guidePdf=''; // 原私人附件不由公開網站直接提供
-  return `${mapBtn(r['Google Maps'])}${r['Google Maps']?mapCode(r['Map Code'],r['Map Code Status']):mapCode(r['Map Code'])}${ticket}${guide}${guidePdf}`;
+  // User-supplied HTTPS information links live in private itinerary data, not public itinerary source.
+  const infoHref=safeHref(r['實用連結']);
+  const infoLink=infoHref?`<a href="${esc(infoHref)}" target="_blank" rel="noopener noreferrer">${esc(r['連結名稱']||'🔗 實用連結')}</a>`:'';
+  return `${mapBtn(r['Google Maps'])}${r['Google Maps']?mapCode(r['Map Code'],r['Map Code Status']):mapCode(r['Map Code'])}${ticket}${guide}${guidePdf}${infoLink}`;
 }
 window.copyText=async t=>{try{await navigator.clipboard.writeText(t);toast('已複製 '+t)}catch{prompt('複製',t)}};
 function toast(t){const d=document.createElement('div');d.textContent=t;d.style='position:fixed;left:50%;bottom:95px;transform:translateX(-50%);background:#28231e;color:white;padding:10px 14px;border-radius:999px;font-size:12px;z-index:99';document.body.appendChild(d);setTimeout(()=>d.remove(),1600)}
@@ -421,6 +424,8 @@ function itineraryFormFields(r,defaultDay){
     ['priority','優先度','select',r['優先度']||'★★★★ 推薦',['★★★★★ 必去','★★★★ 推薦','★★★ 有時間','備案','']],
     ['area','地區','text',r['地區']||''],
     ['maps','Google Maps','url',r['Google Maps']||''],
+    ['infoUrl','實用資訊連結（例如官方道路管制）','url',r['實用連結']||''],
+    ['infoLabel','連結按鈕文字','text',r['連結名稱']||''],
     ['mapcode','Map Code','text',r['Map Code']||''],
     ['parking','停車','textarea',r['停車']||''],
     ['reserve','預約','select',r['預約']||'不需預約',['已預約','不需預約','需確認','未預約','']],
@@ -441,6 +446,8 @@ function formToItinerary(v,old={}){
     優先度:v.priority||'',
     地區:v.area||'',
     'Google Maps':v.maps||'',
+    '實用連結':safeHref(v.infoUrl)||'',
+    '連結名稱':v.infoLabel||'',
     'Map Code':v.mapcode||'',
     'Map Code Status':v.mapcode?'手動輸入':'',
     停車:v.parking||'',
@@ -793,6 +800,7 @@ window.shopToExpense=async id=>{
     ['merchant','店家／項目','text',x.name||''],
     ['category','分類','select','購物',['餐飲','住宿','購物','交通','景點','其他']],
     ['jpy','日幣金額','number',x.actual||x.budget||''],
+    ['payer','誰付錢？','select','未指定',['未指定','柴犬','貓咪']],
     ['card','付款方式／卡片','select','現金',['現金',...ref.cards.map(c=>c.name),'其他']],
     ['note','備註','textarea',x.place?`購買地點：${x.place}`:'']
   ],async v=>{
@@ -803,7 +811,11 @@ window.shopToExpense=async id=>{
 };
 window.deleteShop=async id=>{if(confirm('刪除這項？')){await TripDB.del('shopping',id);renderShopping()}};
 $$('#shoppingFilters button').forEach(b=>b.addEventListener('click',()=>{$$('#shoppingFilters button').forEach(x=>x.classList.remove('active'));b.classList.add('active');shopCat=b.dataset.cat;renderShopping()}));
-// Expenses
+// Expenses: payer is separate from payment instrument, kept only in private IndexedDB.
+const expensePayerOptions=['未指定','柴犬','貓咪'];
+const expensePayerLabel=x=>x==='柴犬'?'🐕 柴犬':x==='貓咪'?'🐈 貓咪':'未指定';
+const normalizedExpensePayer=x=>expensePayerOptions.includes(x)?x:'未指定';
+let expensePayerFilter='全部';
 const expenseCardOptions=['現金',...ref.cards.map(c=>c.name),'其他'];
 $('#addExpenseBtn').addEventListener('click',()=>openDialog('新增支出',[
   ['date','日期','date',new Date().toISOString().slice(0,10)],
@@ -811,6 +823,7 @@ $('#addExpenseBtn').addEventListener('click',()=>openDialog('新增支出',[
   ['category','分類','select','餐飲',['餐飲','住宿','購物','交通','景點','其他']],
   ['jpy','日幣金額','number',''],
   ['twd','台幣金額（可空白）','number',''],
+  ['payer','誰付錢？','select','未指定',expensePayerOptions],
   ['card','付款方式／卡片','select','現金',expenseCardOptions],
   ['receipt','收據照片（選填）','file',''],
   ['note','備註','textarea','']
@@ -829,23 +842,67 @@ function expenseCategoryHTML(rows,totalJpy){
     return `<div class="break-row"><div><b>${esc(c)}</b><small>¥${sums[c].toLocaleString()} · ${pct.toFixed(0)}%</small></div><div class="bar"><i style="width:${Math.max(4,pct)}%"></i></div></div>`;
   }).join('')}`;
 }
+function expensePayerSummaryHTML(rows){
+  const calc=p=>rows.filter(x=>normalizedExpensePayer(x.payer)===p).reduce((a,x)=>{
+    a.jpy+=Number(x.jpy||0);a.twd+=Number(x.twd||0);a.count++;return a;
+  },{jpy:0,twd:0,count:0});
+  return `<div class="section-head"><h3>誰付了多少？</h3><small>依已記錄的付款人統計，不代表應分攤金額</small></div>
+    <div class="payer-summary-grid">${expensePayerOptions.map(p=>{
+      const t=calc(p);return `<div class="payer-summary-item"><b>${esc(expensePayerLabel(p))}</b><span>¥${t.jpy.toLocaleString()}</span><small>NT$${Math.round(t.twd).toLocaleString()} · ${t.count} 筆</small></div>`;
+    }).join('')}</div>`;
+}
 async function renderExpenses(){
   const rows=(await TripDB.all('expenses')).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   const j=rows.reduce((s,x)=>s+Number(x.jpy||0),0),t=rows.reduce((s,x)=>s+Number(x.twd||0),0);
   $('#expenseSummary').innerHTML=`<div class="summary"><small>本趟日幣</small><b>¥${j.toLocaleString()}</b></div><div class="summary"><small>約台幣</small><b>NT$${Math.round(t).toLocaleString()}</b></div><div class="summary"><small>筆數</small><b>${rows.length}</b></div><div class="summary"><small>匯率</small><b>${rate.toFixed(4)}</b></div>`;
   $('#homeSpendText').textContent=`本趟 ¥${j.toLocaleString()}`;
   $('#expenseBreakdown').innerHTML=expenseCategoryHTML(rows,j);
-  $('#expenseList').innerHTML=rows.length?rows.map(x=>`<article class="card expense-row">
-    ${x.receipt?`<img class="receipt-thumb" src="${x.receipt}" alt="收據">`:''}
-    <div class="grow"><div class="big">${esc(x.date||'')} · ${esc(x.category||'')}</div><h3>${esc(x.merchant||'未命名')}</h3>${x.card?`<p class="note">💳 ${esc(x.card)}</p>`:''}${x.note?`<p class="note">${esc(x.note)}</p>`:''}</div>
-    <div><div class="money">¥${Number(x.jpy||0).toLocaleString()}</div><p class="note">NT$${Number(x.twd||0).toLocaleString()}</p><button onclick="deleteExpense('${x.id}')">×</button></div>
-  </article>`).join(''):'<div class="empty">還沒有支出。可按 ＋ 手動記帳，或用「掃描收據 Beta」。</div>'
+  $('#expensePayerSummary').innerHTML=expensePayerSummaryHTML(rows);
+  $$('#expensePayerFilters button').forEach(b=>b.classList.toggle('active',b.dataset.payer===expensePayerFilter));
+  const shown=expensePayerFilter==='全部'?rows:rows.filter(x=>normalizedExpensePayer(x.payer)===expensePayerFilter);
+  $('#expenseList').innerHTML=shown.length?shown.map(x=>`<article class="card expense-row">
+    ${safeImg(x.receipt)?`<img class="receipt-thumb" src="${safeImg(x.receipt)}" alt="收據">`:''}
+    <div class="grow"><div class="big">${esc(x.date||'')} · ${esc(x.category||'')}</div><h3>${esc(x.merchant||'未命名')}</h3>
+      <p class="note"><b>付款人：${esc(expensePayerLabel(normalizedExpensePayer(x.payer)))}</b></p>
+      ${x.card?`<p class="note">💳 ${esc(x.card)}</p>`:''}${x.note?`<p class="note">${esc(x.note)}</p>`:''}</div>
+    <div><div class="money">¥${Number(x.jpy||0).toLocaleString()}</div><p class="note">NT$${Number(x.twd||0).toLocaleString()}</p><div class="expense-row-actions"><button type="button" data-expense-edit="${esc(x.id)}">編輯</button><button type="button" data-expense-delete="${esc(x.id)}">刪除</button></div></div>
+  </article>`).join(''):'<div class="empty">'+(rows.length?'這個付款人目前沒有紀錄。':'還沒有支出。可按 ＋ 手動記帳，或用「掃描收據 Beta」。')+'</div>';
 }
+$$('#expensePayerFilters button').forEach(b=>b.addEventListener('click',()=>{
+  expensePayerFilter=b.dataset.payer;renderExpenses();
+}));
+window.editExpense=async id=>{
+  const old=await TripDB.get('expenses',id);if(!old)return;
+  openDialog('編輯支出（包含付款人）',[
+    ['date','日期','date',old.date||''],
+    ['merchant','店家／項目','text',old.merchant||''],
+    ['category','分類','select',old.category||'其他',['餐飲','住宿','購物','交通','景點','其他']],
+    ['jpy','日幣金額','number',old.jpy||''],
+    ['twd','台幣金額（可空白）','number',old.twd||''],
+    ['payer','誰付錢？','select',normalizedExpensePayer(old.payer),expensePayerOptions],
+    ['card','付款方式／卡片','select',old.card||'現金',[...new Set([...expenseCardOptions,old.card].filter(Boolean))]],
+    ['receipt','更換收據照片（選填；不選會保留原照片）','file',''],
+    ['note','備註','textarea',old.note||'']
+  ],async v=>{
+    let receipt=old.receipt||'';
+    if(v.receiptFile)receipt=await compressImage(v.receiptFile,1500,.72);
+    delete v.receiptFile;
+    if(v.jpy&&!v.twd)v.twd=Math.round(Number(v.jpy)*rate);
+    await TripDB.put('expenses',{...old,...v,receipt});
+    renderExpenses();toast('付款人與支出已更新');
+  });
+};
 window.deleteExpense=async id=>{if(confirm('刪除這筆支出？')){await TripDB.del('expenses',id);renderExpenses()}};
+$('#expenseList').addEventListener('click',e=>{
+  const edit=e.target.closest('[data-expense-edit]');
+  const del=e.target.closest('[data-expense-delete]');
+  if(edit)editExpense(edit.dataset.expenseEdit);
+  else if(del)deleteExpense(del.dataset.expenseDelete);
+});
 $('#exportExpenses').addEventListener('click',async()=>{
-  const rows=await TripDB.all('expenses');const cols=['date','merchant','category','jpy','twd','card','note'];
-  const csv=[cols.join(','),...rows.map(r=>cols.map(c=>'"'+String(r[c]??'').replace(/"/g,'""')+'"').join(','))].join('\n');
-  downloadBlob(new Blob(['\ufeff'+csv],{type:'text/csv'}),'JapanTrip-expenses.csv')
+  const rows=await TripDB.all('expenses');const cols=['date','merchant','category','payer','jpy','twd','card','note'];
+  const csv=[cols.join(','),...rows.map(r=>cols.map(c=>'"'+String(c==='payer'?normalizedExpensePayer(r.payer):(r[c]??'')).replace(/"/g,'""')+'"').join(','))].join('\n');
+  downloadBlob(new Blob(['\ufeff'+csv],{type:'text/csv'}),'JapanTrip-expenses.csv');
 });
 async function loadTesseract(){throw new Error('此版暫停外部 OCR 載入，請使用手動記帳並附收據照片。')}
 function parseReceiptText(text){
@@ -884,6 +941,7 @@ $('#receiptInput')?.addEventListener('change',async e=>{
       ['merchant','店家／項目','text',parsed.merchant||''],
       ['category','分類','select','購物',['餐飲','住宿','購物','交通','景點','其他']],
       ['jpy','辨識金額（日圓）','number',parsed.amount||''],
+      ['payer','誰付錢？','select','未指定',expensePayerOptions],
       ['card','付款方式／卡片','select','現金',expenseCardOptions],
       ['note','備註','textarea','OCR自動辨識，已人工確認']
     ],async v=>{

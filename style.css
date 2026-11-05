@@ -71,3 +71,13 @@
 .qa-list{display:flex;flex-direction:column;gap:9px;margin-bottom:14px}.qa-row{display:grid;grid-template-columns:34px 1fr;gap:10px;background:#fff;border-radius:16px;padding:12px;border:1px solid var(--line)}.qa-row>span{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:900}.qa-row.pass>span{background:#e3f0e5;color:#44704a}.qa-row.warn>span{background:#fff0db;color:#9a6424}.qa-row.fail>span{background:#f7dfda;color:#9a4739}.qa-row b{font-size:11px}.qa-row p{font-size:9px;color:var(--muted);line-height:1.55;margin:4px 0 0}.qa-manual{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.qa-manual button{border:1px solid var(--line);background:#fff;border-radius:12px;padding:10px;font-size:10px}
 
 @media(max-width:620px){.reminder-row{grid-template-columns:32px 1fr}.reminder-side{grid-column:2;text-align:left;display:flex;align-items:center;gap:8px}.reminder-side b{margin:0}.system-hero{align-items:flex-start;flex-direction:column}.health-grid{grid-template-columns:1fr 1fr}.qa-manual{grid-template-columns:1fr}.qa-score{align-items:flex-start}}
+
+/* V2.11.2 expense payer summary and edit actions */
+.payer-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.payer-summary-item{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;min-width:0}
+.payer-summary-item b,.payer-summary-item span,.payer-summary-item small{display:block;overflow-wrap:anywhere}
+.payer-summary-item b{font-size:12px}.payer-summary-item span{font-size:17px;font-weight:800;margin:5px 0}
+.payer-summary-item small{font-size:10px;color:var(--muted);line-height:1.5}
+.expense-row-actions{display:flex;justify-content:flex-end;gap:5px}
+.expense-row-actions button{background:white;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:6px 8px;font-size:11px}
+@media(max-width:460px){.payer-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.payer-summary-item:last-child{grid-column:1/-1}}
