@@ -1,4 +1,4 @@
-/* V2.11.0 private JSON controller. User selects file locally; no private fetch, no remote sync. */
+/* V2.11.1 compatible private JSON controller. User selects file locally; no private fetch, no remote sync. */
 window.PrivateV211=(()=>{
   const FORMAT='japan-road-trip-private';
   const KEYLIST=['japan-trip-itinerary-custom-v1','japan-trip-reminder-state-v1','japan-trip-card-guide-tasks-v1','trip-checks','jpy-twd-rate','jpy-twd-stamp'];
@@ -55,7 +55,7 @@ window.PrivateV211=(()=>{
     const a=snap.curr||{};
     const t=a.trip||{dayOrder:[],baseItems:[],itineraryCustom:emptyCustom(),hotels:[],flights:[],lounges:[],rental:{},reservations:[],tickets:[]};
     const c=JSON.parse(snap.localState['japan-trip-itinerary-custom-v1']||'null')||t.itineraryCustom||emptyCustom();
-    const out={format:FORMAT,schemaVersion:'1.0.0',packageId:'export-'+new Date().toISOString(),tripId:a.tripId||'local-trip',exportedAt:new Date().toISOString(),source:{appVersion:'2.11.0',sourceType:'v211-browser-full-backup',migrationVersion:1},
+    const out={format:FORMAT,schemaVersion:'1.0.0',packageId:'export-'+new Date().toISOString(),tripId:a.tripId||'local-trip',exportedAt:new Date().toISOString(),source:{appVersion:'2.11.1',sourceType:'v211-browser-full-backup',migrationVersion:1},
       trip:{...copy(t),itineraryCustom:c},userData:{localState:copy(snap.localState)},attachments:copy(a.attachments||[]),integrity:{counts:{},warnings:['本檔是私人明文 JSON；請另以 7-Zip AES-256 加密保存。']}};
     for(const k of TripDB.stores)out.userData[k]=copy(snap.stores[k]||[]);
     for(const k of ['baseItems','hotels','flights'])out.integrity.counts[k]=out.trip[k].length;
@@ -74,7 +74,7 @@ window.PrivateV211=(()=>{
     if(!p.trip.baseItems.length && !Object.values(p.userData).some(x=>Array.isArray(x)&&x.length)){
       if(!confirm('目前尚未匯入私人旅程。是否仍要下載空白備份？'))return false;
     }
-    download(p,'JapanTrip-V211-PRIVATE-full-'+new Date().toISOString().slice(0,10)+'.json');
+    download(p,'JapanTrip-V2111-PRIVATE-full-'+new Date().toISOString().slice(0,10)+'.json');
     alert('已啟動私人 JSON 下載。請到「下載」確認檔案實際存在，再加密保存；下載不等於資料已加密。');
     return true;
   }
@@ -145,7 +145,7 @@ window.PrivateV211=(()=>{
       download(before,'BACKUP-BEFORE-IMPORT-'+new Date().toISOString().slice(0,19).replace(/:/g,'-')+'.json');
       if(!confirm('已開始下載「匯入前備份」。\n請先到下載資料夾確認檔案存在，並將它加密保存。\n完成後按「確定」繼續；未成功保存請按「取消」。'))return false;
     }
-    if(mode==='restore'&&!confirm('最後確認：完整還原將以匯入包覆蓋此 V2.11.0 PWA 目前私人資料。舊 GitHub 帳號和舊手機資料不會刪除。確定繼續？'))return false;
+    if(mode==='restore'&&!confirm('最後確認：完整還原將以匯入包覆蓋此 V2.11.1 PWA 目前私人資料。舊 GitHub 帳號和舊手機資料不會刪除。確定繼續？'))return false;
     const stats={added:0,conflicts:0};
     const existingPackage=hasExisting?currentToPackage(snap):null;
     const merged=mode==='restore'?copy(incoming):combine(existingPackage,incoming,stats);

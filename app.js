@@ -1,5 +1,5 @@
 const baseData=window.TRIP_DATA||[], hotels=window.HOTELS||[], flights=window.FLIGHTS||[], loungeData=window.LOUNGE_DATA||[], rental=window.RENTAL_DATA||{}, ref=window.REFERENCE_DATA||{cards:[],networkPromos:[],guides:[]};
-const APP_META={version:'2.11.0',label:'私人資料隔離公開候選版',released:'2026-11-03'};
+const APP_META={version:'2.11.1',label:'完整導讀・精準刷卡・住宿圖片',released:'2026-11-05'};
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)], pad=n=>String(n).padStart(2,'0');
 const esc=(s='')=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(16).slice(2);
@@ -630,13 +630,13 @@ const defaultCardProfile={
   kgiAutopay:false,
   visaSelectRegistered:false,
   jcbCouponReady:false,
-  networks:{}
+  networks:{},heldStatus:{},registrationStatus:{},capUsedTwd:{}
 };
 let cardProfile={...defaultCardProfile,networks:{}};
 
 async function loadCardProfile(){
   const row=await TripDB.get('settings','cardProfile');
-  cardProfile={...defaultCardProfile,...(row?.value||{}),networks:{...(row?.value?.networks||{})}};
+  cardProfile={...defaultCardProfile,...(row?.value||{}),networks:{...(row?.value?.networks||{})},heldStatus:{...(row?.value?.heldStatus||{})},registrationStatus:{...(row?.value?.registrationStatus||{})},capUsedTwd:{...(row?.value?.capUsedTwd||{})}};
   // No personal eligibility assumptions are made in the public version.
 }
 async function saveCardProfile(){await TripDB.put('settings',{id:'cardProfile',value:cardProfile});}
@@ -666,57 +666,27 @@ function renderCards(filter='all'){
   }
   $('#cardsList').innerHTML=list.join('');
 }
-function cardRateFor(c,scenario){
-  let r=c.calc?.rates?.[scenario];
-  if(r==null)return null;
-  const req=c.calc?.requires?.[scenario];
-  if(req && !cardProfile[req])return null;
-  if(c.id==='ubot-jiho' && scenario==='mobile'){
-    r=2.5+(cardProfile.jihoMobileRegistered?1.5:0)+(cardProfile.jihoBill30k?1:0);
-  }
-  if(c.id==='kgi-eslite' && cardProfile.kgiAutopay)r=2.3;
-  return r;
-}
-function networkExtra(c,scenario,amount){
-  if(scenario!=='drugstore')return {score:0,label:''};
-  const net=cardProfile.networks?.[c.id];
-  if(net==='Visa' && cardProfile.visaSelectRegistered && amount>=20000){
-    const pct=2000/amount*100;
-    return {score:pct,label:`Visa Select：另回饋 ¥2,000（約 ${pct.toFixed(1)}%，需符合指定店/未稅門檻/上傳憑證）`};
-  }
-  if(net==='JCB' && cardProfile.jcbCouponReady && amount>=10000){
-    const pct=amount>=50000?7:amount>=30000?5:3;
-    return {score:pct,label:`JCB 指定藥妝：店頭約 ${pct}% OFF（需出示優惠券；指定品牌）`};
-  }
-  if(net==='Mastercard')return {score:0,label:'Mastercard Travel Rewards：商戶與回饋滾動更新，請點活動頁確認當期日本名單。'};
-  return {score:0,label:''};
-}
 function renderCardCompare(){
   if(!$('#cardCompareResult'))return;
   const scenario=$('#cardScenario')?.value||'physical';
   const amount=Math.max(0,Number($('#cardAmount')?.value||0));
   const fee=Number($('#foreignFee')?.value||0);
-  const rows=[];
-  ref.cards.forEach(c=>{
-    const ratePct=cardRateFor(c,scenario);
-    if(ratePct==null)return;
-    const extra=networkExtra(c,scenario,amount);
-    const rewardTwd=amount*rate*(ratePct/100);
-    const feeTwd=amount*rate*(fee/100);
-    rows.push({c,ratePct,extra,rewardTwd,feeTwd,score:ratePct+extra.score});
-  });
-  rows.sort((a,b)=>b.score-a.score);
-  const top=rows.slice(0,5);
-  $('#cardCompareResult').innerHTML=top.length?top.map((x,i)=>`
-    <article class="compare-row ${i===0?'winner':''}">
-      <div class="rank">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</div>
-      <div class="grow">
-        <h4>${esc(x.c.name)}</h4>
-        <p><b>卡片回饋約 ${x.ratePct.toFixed(1)}%</b> · 約 NT$${Math.round(x.rewardTwd).toLocaleString()}</p>
-        ${x.extra.label?`<p class="network-extra">${esc(x.extra.label)}</p>`:''}
-        <small>若以海外交易費 ${fee.toFixed(1)}% 粗估，費用約 NT$${Math.round(x.feeTwd).toLocaleString()}；此為比較用估算。</small>
-      </div>
-    </article>`).join(''):'<div class="empty">依目前資格設定，這個情境沒有可自動比較的卡片。請先按「資格 / 卡組織設定」。</div>';
+  const merchant=$('#cardMerchant')?.value||'';
+  const payment=$('#cardPayment')?.value||'physical';
+  const evaluated=window.V2111CardEngine?.compare({scenario,amountJPY:amount,twdRate:rate,foreignFee:fee,
+    merchant,payment,profile:cardProfile})||[];
+  $('#cardCompareResult').innerHTML=evaluated.length?evaluated.slice(0,9).map(x=>{
+    const status=x.held==='held'?'持卡':x.held==='not-held'?'未持有':'持卡待確認';
+    return `<article class="compare-row ${x.confirmed?'winner':''}">
+      <div class="rank">${x.confirmed?'✓':'? '}</div>
+      <div class="grow"><h4>${esc(x.name)} <small>· ${esc(status)}</small></h4>
+      <p><b>已確認條件估算 ${x.basePct.toFixed(1)}%</b> · 約 NT$${Math.round(x.baseReward).toLocaleString()}</p>
+      <p class="note">扣除統一輸入的 ${fee.toFixed(1)}% 海外手續費後，估算約 NT$${Math.round(x.baseReward-x.feeTwd).toLocaleString()}（僅比較基礎部分）</p>
+      ${x.conditionalAmount>0?`<p class="network-extra">符合待確認條件後，另有最高約 NT$${Math.round(x.conditionalAmount).toLocaleString()} 的加碼機會（未算入上方保守數值）</p>`:''}
+      ${x.notes.map(v=>`<p class="calc-note">• ${esc(v)}</p>`).join('')}
+      ${x.source?`<a href="${esc(safeHref(x.source))}" target="_blank" rel="noopener noreferrer">銀行官方來源 ↗</a>`:''}
+      </div></article>`;
+  }).join(''):'<div class="empty">請先填寫金額，並在「資格／卡組織設定」確認實際持有的卡片。</div>';
 }
 async function editCardProfile(){
   await loadCardProfile();
@@ -734,11 +704,29 @@ async function editCardProfile(){
     ['jcbCouponReady','JCB：日本藥妝優惠券會使用','select',cardProfile.jcbCouponReady?'是':'否',['否','是']]
   ];
   ref.cards.forEach(c=>fields.push([`net__${c.id}`,`${c.name} 卡組織`,'select',cardProfile.networks?.[c.id]||'未設定',['未設定','Visa','Mastercard','JCB']]));
+  fields.push(['dbsDiningStatus','星展星饗世界：2026年11月登錄證據','select',cardProfile.registrationStatus?.dbsDining202611||'待確認',['待確認','有登錄紀錄','未登錄']]);
+  fields.push(['kumamonStoreStatus','玉山熊本熊：指定商店加碼登錄','select',cardProfile.registrationStatus?.kumamonStore||'待確認',['待確認','有登錄紀錄','未登錄']]);
+  fields.push(['fubonTravelStatus','富邦Costco：2026年11月海外加碼登錄','select',cardProfile.registrationStatus?.fubonTravel202611||'待確認',['待確認','有登錄紀錄','未登錄']]);
+  fields.push(['richartTravelStatus','台新Richart：當天已切玩旅刷且符合Level2','select',cardProfile.registrationStatus?.richartTravel||'待確認',['待確認','有登錄紀錄','未登錄']]);
+  ref.cards.forEach(c=>{
+    fields.push([`held__${c.id}`,`${c.name} 是否持有`,'select',cardProfile.heldStatus?.[c.id]||'待確認',['待確認','持有','未持有']]);
+    fields.push([`cap__${c.id}`,`${c.name}：本期已使用加碼金額（NT$，不確定留空）`,'number',cardProfile.capUsedTwd?.[c.id]??'']);
+  });
+
   openDialog('信用卡資格 / 卡組織設定',fields,async v=>{
     const boolKeys=['mEbill','jihoEbill','fubonRegistered','jihoMobileRegistered','jihoBill30k','kumamonPaypay','ubearOnlineFull','flygoEligible','kgiAutopay','visaSelectRegistered','jcbCouponReady'];
     boolKeys.forEach(k=>cardProfile[k]=v[k]==='是');
     cardProfile.networks={...(cardProfile.networks||{})};
     ref.cards.forEach(c=>cardProfile.networks[c.id]=v[`net__${c.id}`]||'未設定');
+    cardProfile.registrationStatus={...(cardProfile.registrationStatus||{}),
+      dbsDining202611:v.dbsDiningStatus,kumamonStore:v.kumamonStoreStatus,
+      fubonTravel202611:v.fubonTravelStatus,richartTravel:v.richartTravelStatus};
+    cardProfile.heldStatus={...(cardProfile.heldStatus||{})};
+    cardProfile.capUsedTwd={...(cardProfile.capUsedTwd||{})};
+    ref.cards.forEach(c=>{
+      cardProfile.heldStatus[c.id]=v[`held__${c.id}`]||'待確認';
+      cardProfile.capUsedTwd[c.id]=v[`cap__${c.id}`]===''?null:Math.max(0,Number(v[`cap__${c.id}`]));
+    });
     await saveCardProfile();renderCards();renderCardCompare();toast('信用卡設定已儲存於這台裝置');
   });
 }
@@ -747,6 +735,8 @@ $('#compareCardsBtn')?.addEventListener('click',renderCardCompare);
 $('#cardScenario')?.addEventListener('change',renderCardCompare);
 $('#cardAmount')?.addEventListener('input',renderCardCompare);
 $('#foreignFee')?.addEventListener('change',renderCardCompare);
+$('#cardMerchant')?.addEventListener('input',renderCardCompare);
+$('#cardPayment')?.addEventListener('change',renderCardCompare);
 $$('#cardFilters button').forEach(b=>b.addEventListener('click',()=>{$$('#cardFilters button').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderCards(b.dataset.filter)}));
 loadCardProfile().then(()=>{renderCards();renderCardCompare()});
 // Shopping
@@ -999,7 +989,10 @@ $('#downloadMemoir')?.addEventListener('click',async()=>{
   toast('回憶錄 HTML 已下載')
 });
 // Guides
-$('#guideList').innerHTML=ref.guides.map(g=>`<article class="card"><div class="big">${esc(g.day)} · 約 ${g.minutes} 分鐘</div><h3>${esc(g.title)}</h3><p class="note">${esc(g.intro.slice(0,75))}…</p><div class="actions"><button onclick="openGuide('${g.id}')">開始閱讀 →</button></div></article>`).join('');window.openGuide=id=>{const g=ref.guides.find(x=>x.id===id);$('#guideTitle').textContent=g.title;$('#guideBody').innerHTML=`<p class="lead">${esc(g.intro)}</p><h3>現場請特別看</h3><ul>${g.points.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><blockquote><b>帶著這個問題去看：</b><br>${esc(g.question)}</blockquote>`;go('guideDetail')};
+$('#guideList').innerHTML=ref.guides.map(g=>`<article class="card"><div class="big">${esc(g.day)} · 約 ${g.minutes} 分鐘</div><h3>${esc(g.title)}</h3><p class="note">${esc(g.intro.slice(0,100))}…</p><div class="actions"><button onclick="openGuide('${g.id}')">${g.href?'📖 閱讀完整章節 →':'開始閱讀 →'}</button></div></article>`).join('');
+window.openGuide=id=>{const g=ref.guides.find(x=>x.id===id);if(!g)return;
+  if(g.href){rememberGuideReturn();location.href=g.href;return;}
+  $('#guideTitle').textContent=g.title;$('#guideBody').innerHTML=`<p class="lead">${esc(g.intro)}</p><h3>現場請特別看</h3><ul>${g.points.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><blockquote><b>帶著這個問題去看：</b>${esc(g.question)}</blockquote>`;go('guideDetail')};
 // Checklist
 const checks=['護照','台灣駕照','國際駕照／日文譯本','租車訂單','ETC／高速公路方案確認','住宿訂單','景點／活動預約','行動網路／eSIM','Google Maps 離線地圖','重要飯店／停車場 Map Code','信用卡／旅遊保險','行李與行動電源','返程還車時間確認','飯店入住及浴場時間確認'];let checkState=JSON.parse(localStorage.getItem('trip-checks')||'{}');function renderChecks(){$('#checklist').innerHTML=checks.map((c,i)=>`<label class="check-row ${checkState[i]?'done':''}"><input type="checkbox" data-i="${i}" ${checkState[i]?'checked':''}><span>${esc(c)}</span></label>`).join('');$$('#checklist input').forEach(x=>x.addEventListener('change',e=>{checkState[e.target.dataset.i]=e.target.checked;localStorage.setItem('trip-checks',JSON.stringify(checkState));renderChecks()}))}renderChecks();$('#resetChecklist').addEventListener('click',()=>{localStorage.removeItem('trip-checks');checkState={};renderChecks()});
 // Dialog generic
@@ -1295,7 +1288,7 @@ renderHotels();renderShopping();renderExpenses();renderNotes();renderHomeReminde
 restoreGuideReturn();
 
 
-/* V2.11.0 - generic card-shop guide from V2.10.1 */
+/* V2.11.1 - compatible shop guide from V2.10.1 */
 const JAPAN_CARD_GUIDE={...(window.PUBLIC_CARD_GUIDE||{}),...(window.PRIVATE_CARD_GUIDE||{})};
 let japanCardTab='overview';
 let japanCardDay='D01';
@@ -1364,14 +1357,14 @@ function renderJapanCardGuide(){
 function japanCardAdvice(r){
   const name=String(r['名稱']||''),type=String(r['類型']||''),s=(name+' '+type+' '+String(r['地區']||'')).toLowerCase();
   let text='';
-  if(/松屋銀座|matsuya ginza/.test(s)) text='推薦：JCB卡＋松屋95折券（限指定百貨商品）。';
-  else if(/bic camera|yodobashi|松本清|マツモトキヨシ|唐吉訶德|ドン・キホーテ|don quijote|大國藥妝|uniqlo|gu|無印良品|muji|mitsui|lalaport/.test(s)) text='推薦：熊本熊卡（指定店最高8.5%；先確認登錄、店名及額度）。';
-  else if(/suica|pasmo|icoca|交通卡儲值/.test(s)) text='推薦：熊本熊／吉鶴卡；交通卡儲值須符合各自登錄條件。';
-  else if(type==='餐飲'||/午餐|晚餐|早餐|餐廳|海鮮|鰻魚|咖啡/.test(s)) text='推薦：星展 eco；星饗世界每日擇高一筆，留意回饋上限。';
-  else if(/租車|rent-a-car/.test(s)) text='推薦：熊本熊卡（限指定租車商）；不符時改星展 eco／富邦 Costco。';
-  else if(/飯店|hotel|住宿|check-in|check-out/.test(s)) text='現場付款：星展 eco／富邦 Costco；已預付不會重複取得回饋。';
-  else if(/加油|停車|高速|etc|pa|sa/.test(s)) text='推薦：星展 eco／富邦 Costco；ETC及線上交易未必算實體消費。';
-  else if(type==='購物'||/outlet|百貨|商店|採買|購物|伴手禮|costco/.test(s)) text='一般購物：星展 eco／富邦 Costco；熊本熊指定店另核對8.5%活動。';
+  if(/松屋銀座|matsuya ginza/.test(s)) text='先核對：JCB卡＋松屋95折券（限指定百貨商品）。';
+  else if(/bic camera|yodobashi|松本清|マツモトキヨシ|唐吉訶德|ドン・キホーテ|don quijote|大國藥妝|uniqlo|gu|無印良品|muji|mitsui|lalaport/.test(s)) text='先核對：熊本熊卡（指定店最高8.5%；先確認登錄、店名及額度）。';
+  else if(/suica|pasmo|icoca|交通卡儲值/.test(s)) text='先核對：熊本熊／吉鶴卡；交通卡儲值須符合各自登錄條件。';
+  else if(type==='餐飲'||/午餐|晚餐|早餐|餐廳|海鮮|鰻魚|咖啡/.test(s)) text='先核對：星展 eco；星饗世界每日擇高一筆，留意回饋上限。';
+  else if(/租車|rent-a-car/.test(s)) text='先核對：熊本熊卡（限指定租車商）；不符時改星展 eco／富邦 Costco。';
+  else if(/飯店|hotel|住宿|check-in|check-out/.test(s)) text='僅現場付款可比較：星展 eco／富邦 Costco；已預付不會重複取得回饋。';
+  else if(/加油|停車|高速|etc|pa|sa/.test(s)) text='先核對：星展 eco／富邦 Costco；ETC及線上交易未必算實體消費。';
+  else if(type==='購物'||/outlet|百貨|商店|採買|購物|伴手禮|costco/.test(s)) text='一般購物候選：星展 eco／富邦 Costco；熊本熊指定店另核對8.5%活動。';
   return text?`<p class="jpc-inline">💳 ${jpCardEsc(text)}</p>`:'';
 }
 

@@ -1,6 +1,6 @@
-/* V2.11.0 public-only scoped cache. Never caches uploaded private JSON or other origins. */
-const PREFIX='jrt-public-v211-', CACHE=PREFIX+'2.11.0-public-candidate-1';
-const ASSETS=['./','./index.html','./style.css','./app.js','./db.js','./data.js','./reference.js','./card-guide-public.js','./private-store.js','./bootstrap.js','./manifest.json','./version.json','./trip-guide.html','./kakegawa-guide.html','./icons/icon-192.png','./icons/icon-512.png'];
+/* V2.11.1 public-only scoped cache. Never caches uploaded private JSON or other origins. */
+const PREFIX='jrt-public-v211-', CACHE=PREFIX+'2.11.1-public-complete-1';
+const ASSETS=['./','./index.html','./style.css','./app.js','./db.js','./data.js','./reference.js','./card-engine-v2111.js','./card-guide-public.js','./private-store.js','./bootstrap.js','./manifest.json','./version.json','./trip-guide.html','./kakegawa-guide.html','./icons/icon-192.png','./icons/icon-512.png'];
 const ASSET_URLS=new Set(ASSETS.map(x=>new URL(x,self.registration.scope).pathname));
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil((async()=>{

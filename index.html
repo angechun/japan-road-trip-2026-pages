@@ -189,12 +189,18 @@
     <div class="compare-form">
       <label>消費情境
         <select id="cardScenario">
-          <option value="physical">日本一般實體</option>
+          <option value="physical">日本一般實體</option><option value="dining">日本餐廳／海鮮餐敘</option><option value="rental">日本租車現場付款</option><option value="train">日本鐵路／車票</option>
           <option value="mobile">Apple Pay / Google Pay</option>
           <option value="booking">海外網路 / 訂房</option>
           <option value="paypay">PayPay</option>
           <option value="drugstore">日本藥妝 / 電器</option>
         </select>
+      </label>
+      <label>店家（選填，供指定店加碼辨識）
+        <input id="cardMerchant" placeholder="例如：BIC CAMERA、唐吉訶德、Nippon Rent-A-Car">
+      </label>
+      <label>付款方式
+        <select id="cardPayment"><option value="physical">實體信用卡</option><option value="applepay">Apple Pay</option><option value="googlepay">Google Pay</option><option value="online">網路刷卡</option><option value="paypay">PayPay</option></select>
       </label>
       <label>金額（日圓）
         <input id="cardAmount" inputmode="numeric" value="10000">
@@ -207,7 +213,7 @@
       </label>
       <button id="compareCardsBtn" class="primary">比較</button>
     </div>
-    <p class="hint">結果以你設定的登錄/自扣資格計算「最高可得回饋」；活動上限、排除項目與清算匯率仍以銀行入帳為準。</p>
+    <p class="hint">新版把保守估算與「待確認加碼」分開列示；額度未填、卡組織未確認或活動未登錄者不會直接認定最高回饋。金額為日圓，回饋折合新臺幣為估算；最終以發卡銀行及帳單認列為準。</p>
     <div id="cardCompareResult" class="compare-results"></div>
   </section>
   <div class="filterchips" id="cardFilters"><button class="active" data-filter="all">全部權益</button><button data-filter="5">優先卡</button><button data-filter="network">Visa / Mastercard / JCB</button></div>
@@ -268,7 +274,7 @@
   </div>
 
   <section class="system-hero">
-    <div><small>CURRENT VERSION</small><h2>Japan Road Trip · Private-ready PWA</h2><p id="systemVersion">V2.11.0 · PRIVACY PREVIEW</p></div>
+    <div><small>CURRENT VERSION</small><h2>Japan Road Trip · Private-ready PWA</h2><p id="systemVersion">V2.11.1 · PRIVATE DATA READY</p></div>
     <span id="updateBadge" class="system-badge">檢查中</span>
   </section>
 
@@ -330,5 +336,5 @@
 <nav class="bottom-nav"><button data-go="home" class="active"><span>⌂</span><small>首頁</small></button><button data-go="trip"><span>▶</span><small>旅行</small></button><button data-go="wallet"><span>💴</span><small>錢包</small></button><button data-go="expenses"><span>🧾</span><small>記帳</small></button><button data-go="more"><span>•••</span><small>更多</small></button></nav>
 
 <dialog id="editDialog"><form method="dialog" id="editForm"><div class="modal-head"><h3 id="dialogTitle">新增</h3><button value="cancel" class="close">×</button></div><div id="dialogFields"></div><div class="modal-actions"><button value="cancel">取消</button><button value="default" id="dialogSave" class="primary">儲存</button></div></form></dialog>
-<script src="data.js"></script><script src="reference.js"></script><script src="db.js"></script><script src="card-guide-public.js"></script><script src="private-store.js"></script><script src="bootstrap.js"></script>
+<script src="data.js"></script><script src="reference.js"></script><script src="card-engine-v2111.js"></script><script src="db.js"></script><script src="card-guide-public.js"></script><script src="private-store.js"></script><script src="bootstrap.js"></script>
 </body></html>
