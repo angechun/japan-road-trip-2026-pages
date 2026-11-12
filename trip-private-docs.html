@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1d4c46">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<title>私人旅遊文件｜Japan Road Trip</title>
+<link rel="stylesheet" href="./trip-private-docs.css">
+</head>
+<body>
+<header class="bar"><a class="back" href="./index.html">‹ 返回行程</a><span>JAPAN ROAD TRIP · PRIVATE</span></header>
+<main>
+  <section class="hero"><div class="eyebrow">PRIVATE DOCUMENTS · 本機管理</div><h1>🔐 我的旅遊文件</h1><p>eSIM、入場 QR、旅遊保險及租車文件。儲存在目前 PWA 的 IndexedDB，<strong>不會上傳至 GitHub 或遠端伺服器，但本機資料未加密</strong>。</p><p id="status" class="status" role="status" aria-live="polite">讀取資料中…</p></section>
+  <section class="panel" id="updatePanel"><h2>① 套用本次私人更新</h2><p>選擇另行下載的 <strong>REV7_PRIVATE_PATCH_SAFE_ROOT.json</strong>：更新指定行程欄位、官方參考連結及私人旅遊文件。<strong>只更新指定欄位，不清空記帳、日記、照片或其他行程。</strong></p><div class="actions"><button class="light" id="backupFirst">先下載完整私人備份</button><label for="patchFile" class="button primary">套用 REV7 更新檔</label><input id="patchFile" type="file" accept=".json,application/json" hidden></div><p class="micro">如果此頁顯示尚未載入私人旅程，請先確認你使用的是原本保存私人資料的相同瀏覽器／PWA 環境。不要盲目還原舊檔。更新完成後，返回主行程重新整理才會顯示新的時間。</p></section>
+  <section class="panel"><div class="section-title"><h2>② 我的已儲存文件</h2><span id="docCount" class="pill">0 份</span></div><div class="filterbar"><button class="filter active" data-type="all">全部</button><button class="filter" data-type="ticket">🎫 門票</button><button class="filter" data-type="esim">📶 eSIM</button><button class="filter" data-type="insurance">🛡️ 保險</button><button class="filter" data-type="rental">🚗 租車</button><button class="filter" data-type="other">其他</button></div><div id="docs" class="doc-grid"><p class="muted">尚未載入文件。</p></div></section>
+  <section class="panel"><h2>③ 另行新增 PDF／圖片</h2><p>之後取得保單、租車證明或其他門票，可以直接選檔加入私人資料，不必修改 GitHub。</p><div class="formrow"><label>文件類型<select id="newType"><option value="insurance">🛡️ 旅遊保險</option><option value="rental">🚗 租車訂單</option><option value="ticket">🎫 票券／入場 QR</option><option value="esim">📶 eSIM</option><option value="other">📁 其他</option></select></label><label>顯示名稱<input id="newLabel" placeholder="例如：台產旅遊保險 PDF"></label></div><div class="actions"><label class="button primary" for="newFiles">選擇 PDF／圖片並加入</label><input id="newFiles" type="file" accept=".pdf,image/*" multiple hidden></div><p class="micro">支援 PDF 與圖片，單檔最多 8 MB。新增文件儲存於此瀏覽器，不會上傳 GitHub；加入後請再次使用主程式「完整私人備份」，才能把新增文件一起備份。</p></section>
+  <section class="panel"><h2>📍 江之島自駕參考（公開連結）</h2><p><strong>觀光協會江之島駐車場</strong>：24 小時，普通車 ¥400／小時、沒有一般每日上限；岩本樓官網載有住宿旅客停車券 ¥1,500／24 小時資訊，退房時向旅館櫃檯購買。江之島大橋 22:00–05:00 禁止一般車輛駛入。實際規定及費率以官方當日公告為準。</p><div class="actions"><a class="button light" href="https://www.fujisawa-kanko.jp/access/enoshima-parking.html" target="_blank" rel="noopener noreferrer">官方停車場資訊</a><a class="button light" href="https://www.iwamotoro.co.jp/facilities/" target="_blank" rel="noopener noreferrer">岩本樓設施</a><a class="button light" href="https://www.iwamotoro.co.jp/access/" target="_blank" rel="noopener noreferrer">旅館停車優惠</a></div></section>
+  <footer><strong>備份提醒：</strong>私人 JSON 是明文，請儲存於可信賴的位置並用強密碼加密；eSIM 啟用碼可能只能使用一次，請勿提前誤掃。手機或瀏覽器清除網站資料後，本機文件可能消失。</footer>
+</main>
+<script src="./db.js"></script>
+<script src="./private-store.js"></script>
+<script src="./trip-private-docs.js"></script>
+</body>
+</html>
