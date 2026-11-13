@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>旅遊行程精簡｜安全套用工具</title><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<style>html{font-family:-apple-system,BlinkMacSystemFont,"Microsoft JhengHei",sans-serif;background:#f6f7f5;color:#23372f}body{max-width:740px;margin:auto;padding:18px;line-height:1.7}h1{font-size:23px}h2{font-size:18px;margin-bottom:6px}.panel{background:#fff;padding:16px 19px;margin:15px 0;border:1px solid #d8e2dc;border-radius:14px}button{padding:11px 15px;border:0;border-radius:10px;background:#235f55;color:white;font-size:15px;cursor:pointer;margin:6px 4px 6px 0}button:disabled{background:#a1aca6;cursor:not-allowed}label{display:block;margin:8px 0}input[type=file]{max-width:100%}a{color:#235f55}small,.muted{color:#60736b}.muted{white-space:pre-line}.warning{border-left:4px solid #c9892e;padding-left:12px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#edf3ef;padding:12px;border-radius:10px;font-size:12px;max-height:400px;overflow:auto}</style>
+</head><body>
+<h1>2026 日本自駕 PWA｜行程精簡安全套用</h1>
+<p>此工具只會從你選取的 <strong>私人整理檔</strong>讀取改動清單，並在<strong>本機</strong>更新現有行程的必要文字、連結和備案顯示。不會上傳私人資料，也不會清除記帳、日記、照片、住宿私密資料、票券或 eSIM 附件。</p>
+<section class="panel"><h2>① 檢查目前的私人旅程</h2><button id="check">檢查此裝置</button><div id="state" class="muted">尚未檢查。</div></section>
+<section class="panel"><h2>② 選擇私人整理檔</h2><label for="patchFile">選擇 <code>JapanTrip_FINAL_CLEAN_SAFE_PATCH.json</code>（此檔不能上傳 GitHub）</label><input id="patchFile" type="file" accept=".json,application/json"><button id="preview" disabled>檢查可以套用的項目</button><div id="previewText" class="muted">先選檔案，再檢查。</div></section>
+<section class="panel"><h2>③ 備份後安全套用</h2><button id="backup">先匯出這台裝置的完整私人備份</button><label><input id="confirmed" type="checkbox"> 我已確認備份 JSON 真正下載成功，且另有安全備份</label><button id="apply" disabled>套用精簡（不清除個人資料）</button><div id="result" class="muted">尚未修改。</div></section>
+<section class="panel warning"><strong>注意</strong>：如出現「資料不一致／略過」，表示你的裝置上有與參考版本不同的編輯，此工具會保留那些內容，而非強行覆蓋。你可以在「行程編輯」自行查看隱藏項目。<p>這項操作只影響目前的瀏覽器／PWA 儲存空間；另一支手機不會自動同步。<strong>不要清除網站資料，也不要刪除原本的 PWA。</strong></p></section>
+<p><a href="./">回到旅遊首頁</a>　｜　<a href="./trip-private-docs.html">私人文件頁</a></p>
+<script src="./db.js"></script><script src="./private-store.js"></script><script src="./trip-finalize.js"></script>
+</body></html>
