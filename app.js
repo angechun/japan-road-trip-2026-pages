@@ -37,7 +37,20 @@ function refreshEffectiveData(){data=buildEffectiveData();}
 
 function go(name){$$('.view').forEach(v=>v.classList.remove('active')); const v=$('#'+name+'View'); if(v)v.classList.add('active'); $$('.bottom-nav button').forEach(b=>b.classList.toggle('active',b.dataset.go===name)); window.scrollTo({top:0,behavior:'smooth'}); if(name==='expenses')renderExpenses(); if(name==='shopping')renderShopping(); if(name==='notes')renderNotes(); if(name==='hotels')renderHotels(); if(name==='wallet')refreshRateUI(); if(name==='cards'){renderCards();renderCardCompare();} if(name==='trip')renderTripMode(); if(name==='flights')renderFlights(); if(name==='itineraryEdit')renderItineraryEditor(); if(name==='rental')renderRental(); if(name==='pretrip')renderPretrip(); if(name==='system')renderSystem(); if(name==='qa')runQa(false);}
 $$('[data-go]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.go)));
-function safeHref(url){try{const u=new URL(url,location.href);return ['http:','https:'].includes(u.protocol)?u.href:''}catch{return ''}}
+// Fix: absent / blank itinerary URLs must NEVER become a relative /undefined link.
+// Only explicit external HTTP(S) URLs or vetted local guide/doc pages are clickable.
+function safeHref(url){
+  if(typeof url!=='string')return '';
+  const v=url.trim();
+  if(!v||/^(?:undefined|null|nan|none|n\/a|無|待確認|待補|—|-)$/i.test(v))return '';
+  const external=/^https?:\/\//i.test(v);
+  const local=/^(?:\.\/)?(?:trip-private-docs|trip-guide|kakegawa-guide)\.html(?:[?#][^<>]*)?$/.test(v);
+  if(!external&&!local)return '';
+  try{
+    const u=new URL(v,location.href);
+    return ['http:','https:'].includes(u.protocol)?u.href:'';
+  }catch{return ''}
+}
 function safeImg(x){
   const v=String(x||'');
   if(/^data:image\/(?:jpeg|png|webp);base64,[a-zA-Z0-9+/=]+$/.test(v))return v;
