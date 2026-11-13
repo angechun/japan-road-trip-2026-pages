@@ -1,5 +1,5 @@
 /* V2.11.2 public-only scoped cache. Never caches uploaded private JSON or other origins. */
-const PREFIX='jrt-public-v211-', CACHE=PREFIX+'2.11.3-private-docs-root-1';
+const PREFIX='jrt-public-v211-', CACHE=PREFIX+'2.11.3-doc-categories-mobile-v2';
 const ASSETS=['./','./index.html','./style.css','./app.js','./db.js','./data.js','./reference.js','./card-engine-v2111.js','./card-guide-public.js','./private-store.js','./bootstrap.js','./manifest.json','./version.json','./trip-guide.html','./kakegawa-guide.html','./icons/icon-192.png','./icons/icon-512.png','./trip-private-docs.html','./trip-private-docs.css','./trip-private-docs.js'];
 const ASSET_URLS=new Set(ASSETS.map(x=>new URL(x,self.registration.scope).pathname));
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));

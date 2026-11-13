@@ -2,7 +2,7 @@
 (()=>{'use strict';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const COPY=v=>JSON.parse(JSON.stringify(v));
-const TYPES={ticket:'🎫 門票',esim:'📶 eSIM',insurance:'🛡️ 保險',rental:'🚗 租車',other:'📁 其他'};
+const TYPES={ticket:'🎫 門票',esim:'📶 eSIM',insurance:'🛡️ 保險',rental:'🚗 租車',hotel:'🏨 訂房',restaurant:'🍽️ 餐廳',other:'📁 其他'};
 let currentFilter='all',active=null;
 function status(msg,bad=false){const e=$('#status');e.textContent=msg;e.classList.toggle('error',bad);}
 function safe(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -17,10 +17,25 @@ function render(){const el=$('#docs');el.replaceChildren();const list=(active?.a
   const heading=document.createElement('div');heading.innerHTML='<small>'+safe(TYPES[a.type]||TYPES.other)+' · '+safe(a.date||'私人文件')+'</small><h3>'+safe(a.title)+'</h3>'+(a.note?'<p class="note">'+safe(a.note)+'</p>':'');article.append(heading);
   if(validDataUrl(a.qrDataUrl)&&a.qrDataUrl.startsWith('data:image/')){const qr=document.createElement('img');qr.src=a.qrDataUrl;qr.className='qr';qr.alt=a.type==='esim'?'eSIM 啟用 QR Code（請妥善保管）':'入場 QR Code';article.append(qr);}
   else if(validDataUrl(a.dataUrl)&&a.dataUrl.startsWith('data:image/')){const qr=document.createElement('img');qr.src=a.dataUrl;qr.className='qr';qr.alt='已儲存圖片';article.append(qr);}
+  const category=document.createElement('label');category.className='type-switch';category.append(document.createTextNode('文件分類'));
+  const typeSelect=document.createElement('select');typeSelect.setAttribute('aria-label','變更「'+a.title+'」的文件分類');
+  for(const [value,text] of Object.entries(TYPES)){const opt=document.createElement('option');opt.value=value;opt.textContent=text;typeSelect.append(opt);}
+  typeSelect.value=TYPES[a.type]?a.type:'other';typeSelect.addEventListener('change',()=>changeType(a.id,typeSelect.value));
+  category.append(typeSelect);article.append(category);
   const actions=document.createElement('div');actions.className='actions';
   if(validDataUrl(a.dataUrl)){const b=document.createElement('button');b.textContent=a.dataUrl.startsWith('data:application/pdf')?'📄 開啟 PDF':'🖼 開啟圖片';b.addEventListener('click',()=>openAsset(a.dataUrl,a.title));actions.append(b);}
   const d=document.createElement('button');d.textContent='移除此份文件';d.className='danger';d.addEventListener('click',()=>removeDoc(a.id,a.title));actions.append(d);article.append(actions);el.append(article);
  }
+}
+async function changeType(id,type){
+ if(!TYPES[type])return status('不支援的文件分類',true);
+ try{const cur=await TripDB.get('tripPackages','active');if(!cur?.trip||!Array.isArray(cur.attachments))throw Error('找不到已載入的私人旅程');
+  const i=cur.attachments.findIndex(x=>x.id===id);if(i<0)throw Error('此文件已不存在');
+  if(cur.attachments[i].type===type)return;
+  // Only change the classification field. Keep QR, PDF, photos, trip and user records intact.
+  cur.attachments[i]={...cur.attachments[i],type};await TripDB.put('tripPackages',cur);
+  await refresh();status('文件已移到「'+TYPES[type]+'」。如需跨裝置保存此修改，請再匯出完整私人備份。');
+ }catch(e){await refresh().catch(()=>{});status('變更分類失敗：'+e.message,true);}
 }
 function openAsset(dataUrl,title){if(!validDataUrl(dataUrl))return status('文件格式不支援',true);const w=window.open('','_blank');if(!w){status('瀏覽器阻擋彈出視窗。請允許開啟 PDF，或改用下方下載方式。',true);return;}
  try{const i=dataUrl.indexOf(','),mime=dataUrl.slice(5,dataUrl.indexOf(';')),binary=atob(dataUrl.slice(i+1)),buf=new Uint8Array(binary.length);for(let j=0;j<binary.length;j++)buf[j]=binary.charCodeAt(j);const url=URL.createObjectURL(new Blob([buf],{type:mime}));w.location.href=url;setTimeout(()=>URL.revokeObjectURL(url),180000);}catch(e){w.close();status('開啟失敗：'+e.message,true);}}
